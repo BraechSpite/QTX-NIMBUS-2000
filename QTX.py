@@ -1,5 +1,7 @@
 from telethon import TelegramClient, events
 import re
+from aiohttp import web
+import os
 
 # Telegram API credentials
 api_id = 23844616
@@ -85,7 +87,23 @@ async def handle_new_message(event):
         if formatted_signal:
             await client.send_message(output_channel_id, formatted_signal)
 
+# Define a basic HTTP handler for health checks
+async def handle_healthcheck(request):
+    return web.Response(text="Service is up and running!")
+
+# Create an aiohttp application
+app = web.Application()
+app.add_routes([web.get('/', handle_healthcheck)])
+
 # Start the Telegram client
 print("Bot is running...")
 client.start()
-client.run_until_disconnected()
+
+# Get the port from environment variables (Render provides this)
+port = int(os.getenv("PORT", 8080))
+
+# Run the Telegram client and HTTP server together
+try:
+    web.run_app(app, port=port)
+finally:
+    client.run_until_disconnected()
