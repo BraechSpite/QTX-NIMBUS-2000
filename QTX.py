@@ -1,6 +1,6 @@
 from telethon import TelegramClient, events
 import re
-from aiohttp import web
+from flask import Flask
 import os
 
 # Telegram API credentials
@@ -87,13 +87,12 @@ async def handle_new_message(event):
         if formatted_signal:
             await client.send_message(output_channel_id, formatted_signal)
 
-# Define a basic HTTP handler for health checks
-async def handle_healthcheck(request):
-    return web.Response(text="Service is up and running!")
+# Flask app for health check
+app = Flask(__name__)
 
-# Create an aiohttp application
-app = web.Application()
-app.add_routes([web.get('/', handle_healthcheck)])
+@app.route('/')
+def health_check():
+    return "Service is up and running!"
 
 # Start the Telegram client
 print("Bot is running...")
@@ -102,8 +101,16 @@ client.start()
 # Get the port from environment variables (Render provides this)
 port = int(os.getenv("PORT", 8080))
 
-# Run the Telegram client and HTTP server together
-try:
-    web.run_app(app, port=port)
-finally:
+# Run the Telegram client and Flask app
+if __name__ == "__main__":
+    from threading import Thread
+
+    # Run Flask in a separate thread
+    def run_flask():
+        app.run(host="0.0.0.0", port=port)
+
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+
+    # Run the Telegram client
     client.run_until_disconnected()
